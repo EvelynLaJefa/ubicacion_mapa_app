@@ -1,0 +1,24 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub-cache/
+build/
+flutter_*.png
+
+# Android related
+android/.gradle/
+android/captures/
+android/.idea/
+
+# iOS related
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# VS Code
+.vscode/
+
+# Mac/Linux system files
+.DS_Store
+*.iml
