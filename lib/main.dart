@@ -31,6 +31,7 @@ class MapaPantalla extends StatefulWidget {
 
 class _MapaPantallaState extends State<MapaPantalla> {
   LatLng? _ubicacionActual;
+  List<LatLng> _historialUbicaciones = [];
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _MapaPantallaState extends State<MapaPantalla> {
       );
       setState(() {
         _ubicacionActual = LatLng(posicion.latitude, posicion.longitude);
+        _historialUbicaciones.add(_ubicacionActual!);
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,6 +121,15 @@ class _MapaPantallaState extends State<MapaPantalla> {
                         size: 40,
                         color: Colors.red,
                       ),
+                    ),
+                  ],
+                ),
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _historialUbicaciones,
+                      strokeWidth: 4.0,
+                      color: Colors.blue,
                     ),
                   ],
                 ),
