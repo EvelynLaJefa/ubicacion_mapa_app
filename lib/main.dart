@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 void main() {
   runApp(const MyApp());
@@ -32,11 +33,36 @@ class MapaPantalla extends StatefulWidget {
 class _MapaPantallaState extends State<MapaPantalla> {
   LatLng? _ubicacionActual;
   List<LatLng> _historialUbicaciones = [];
+  int _contador = 180;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _obtenerUbicacion();
+    _iniciarTemporizador();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _iniciarTemporizador() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      setState(() {
+        _contador--;
+      });
+
+      if (_contador <= 0) {
+        await _obtenerUbicacion(); // Actualiza la ubicación
+        await _enviarUbicacionAlServidor(); // Envía la ubicación
+        setState(() {
+          _contador = 180; // Reinicia el contador
+        });
+      }
+    });
   }
 
   Future<void> _obtenerUbicacion() async {
@@ -79,7 +105,7 @@ class _MapaPantallaState extends State<MapaPantalla> {
 
       if (respuesta.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Ubicación enviada con éxito")),
+          const SnackBar(content: Text("Ubicación enviada automáticamente")),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -101,44 +127,60 @@ class _MapaPantallaState extends State<MapaPantalla> {
       appBar: AppBar(title: const Text("Mi ubicación en el mapa")),
       body: _ubicacionActual == null
           ? const Center(child: CircularProgressIndicator())
-          : FlutterMap(
-              options: MapOptions(center: _ubicacionActual, zoom: 15),
+          : Column(
               children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  subdomains: const ['a', 'b', 'c'],
-                  userAgentPackageName: 'com.ejemplo.ubicacionmapa',
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    "Próximo envío en: $_contador segundos",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _ubicacionActual!,
-                      width: 80,
-                      height: 80,
-                      child: const Icon(
-                        Icons.location_pin,
-                        size: 40,
-                        color: Colors.red,
+                Expanded(
+                  child: FlutterMap(
+                    options: MapOptions(center: _ubicacionActual, zoom: 15),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        subdomains: const ['a', 'b', 'c'],
+                        userAgentPackageName: 'com.ejemplo.ubicacionmapa',
                       ),
-                    ),
-                  ],
-                ),
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _historialUbicaciones,
-                      strokeWidth: 4.0,
-                      color: Colors.blue,
-                    ),
-                  ],
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: _ubicacionActual!,
+                            width: 80,
+                            height: 80,
+                            child: const Icon(
+                              Icons.location_pin,
+                              size: 40,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: _historialUbicaciones,
+                            strokeWidth: 4.0,
+                            color: Colors.blue,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _enviarUbicacionAlServidor,
         icon: const Icon(Icons.send),
-        label: const Text("Enviar"),
+        label: const Text("Enviar manual"),
       ),
     );
   }
