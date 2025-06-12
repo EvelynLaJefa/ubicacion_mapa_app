@@ -3,6 +3,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(const MyApp());
@@ -29,6 +31,7 @@ class MapaPantalla extends StatefulWidget {
 
 class _MapaPantallaState extends State<MapaPantalla> {
   LatLng? _ubicacionActual;
+  List<LatLng> _historialUbicaciones = [];
 
   @override
   void initState() {
@@ -44,12 +47,51 @@ class _MapaPantallaState extends State<MapaPantalla> {
       );
       setState(() {
         _ubicacionActual = LatLng(posicion.latitude, posicion.longitude);
+        _historialUbicaciones.add(_ubicacionActual!);
       });
     } else {
-      // Puedes manejar si el usuario niega el permiso
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Permiso de ubicación denegado")),
       );
+    }
+  }
+
+  Future<void> _enviarUbicacionAlServidor() async {
+    if (_ubicacionActual == null) return;
+
+    final url = Uri.parse(
+      "https://monitoreo-flotas.onrender.com/api/ubicacion",
+    );
+
+    final datos = {
+      "latitud": _ubicacionActual!.latitude,
+      "longitud": _ubicacionActual!.longitude,
+      "dispositivo": "celular_juan",
+      "timestamp": DateTime.now().toUtc().toIso8601String(),
+    };
+
+    try {
+      final respuesta = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(datos),
+      );
+
+      if (respuesta.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Ubicación enviada con éxito")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error del servidor: ${respuesta.statusCode}"),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error de red: $e")));
     }
   }
 
@@ -82,8 +124,22 @@ class _MapaPantallaState extends State<MapaPantalla> {
                     ),
                   ],
                 ),
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _historialUbicaciones,
+                      strokeWidth: 4.0,
+                      color: Colors.blue,
+                    ),
+                  ],
+                ),
               ],
             ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _enviarUbicacionAlServidor,
+        icon: const Icon(Icons.send),
+        label: const Text("Enviar"),
+      ),
     );
   }
 }
