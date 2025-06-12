@@ -4,6 +4,19 @@ allprojects {
         mavenCentral()
     }
 }
+subprojects {
+    afterEvaluate {
+        if (this.plugins.hasPlugin("com.android.application") || this.plugins.hasPlugin("com.android.library")) {
+            this.extensions.configure<com.android.build.gradle.BaseExtension>("android") {
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_11
+                    targetCompatibility = JavaVersion.VERSION_11
+                }
+            }
+        }
+    }
+}
+            
 
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
