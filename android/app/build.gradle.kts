@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.ubicacion_mapa"
+    namespace = "com.example.ubicacion_manual"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 

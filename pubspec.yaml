@@ -1,4 +1,4 @@
-name: ubicacion_mapa
+name: ubicacion_manual
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -38,6 +38,7 @@ dependencies:
   latlong2: ^0.9.0
   geolocator: ^11.0.0
   permission_handler: ^11.3.0
+  http: ^1.2.1
 
 dev_dependencies:
   flutter_test:

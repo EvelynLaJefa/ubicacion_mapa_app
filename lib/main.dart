@@ -1,89 +1,116 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MiApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MiApp extends StatelessWidget {
+  const MiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: 'Ubicación Manual',
       debugShowCheckedModeBanner: false,
-      home: MapaPantalla(),
+      home: const HomePage(),
     );
   }
 }
 
-class MapaPantalla extends StatefulWidget {
-  const MapaPantalla({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<MapaPantalla> createState() => _MapaPantallaState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _MapaPantallaState extends State<MapaPantalla> {
-  LatLng? _ubicacionActual;
+class _HomePageState extends State<HomePage> {
+  final TextEditingController _urlController = TextEditingController();
+  String _estado = '';
 
-  @override
-  void initState() {
-    super.initState();
-    _obtenerUbicacion();
-  }
+  Future<void> _enviarUbicacion() async {
+    final url = _urlController.text.trim();
 
-  Future<void> _obtenerUbicacion() async {
-    var permiso = await Permission.location.request();
-    if (permiso.isGranted) {
-      Position posicion = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+    if (url.isEmpty) {
       setState(() {
-        _ubicacionActual = LatLng(posicion.latitude, posicion.longitude);
+        _estado = 'Por favor, ingresa una URL válida.';
       });
-    } else {
-      // Puedes manejar si el usuario niega el permiso
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Permiso de ubicación denegado")),
+      return;
+    }
+
+    try {
+      bool servicio = await Geolocator.isLocationServiceEnabled();
+      if (!servicio) {
+        setState(() {
+          _estado = 'Activa los servicios de ubicación.';
+        });
+        return;
+      }
+
+      LocationPermission permiso = await Geolocator.checkPermission();
+      if (permiso == LocationPermission.denied) {
+        permiso = await Geolocator.requestPermission();
+        if (permiso == LocationPermission.denied) {
+          setState(() {
+            _estado = 'Permiso de ubicación denegado.';
+          });
+          return;
+        }
+      }
+
+      if (permiso == LocationPermission.deniedForever) {
+        setState(() {
+          _estado = 'Permiso denegado permanentemente.';
+        });
+        return;
+      }
+
+      Position posicion = await Geolocator.getCurrentPosition();
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body:
+            '{"latitud": ${posicion.latitude}, "longitud": ${posicion.longitude}}',
       );
+
+      setState(() {
+        _estado = 'Respuesta del servidor: ${response.statusCode}';
+      });
+    } catch (e) {
+      setState(() {
+        _estado = 'Error: $e';
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Mi ubicación en el mapa")),
-      body: _ubicacionActual == null
-          ? const Center(child: CircularProgressIndicator())
-          : FlutterMap(
-              options: MapOptions(center: _ubicacionActual, zoom: 15),
-              children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  subdomains: const ['a', 'b', 'c'],
-                  userAgentPackageName: 'com.ejemplo.ubicacionmapa',
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _ubicacionActual!,
-                      width: 80,
-                      height: 80,
-                      child: const Icon(
-                        Icons.location_pin,
-                        size: 40,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+      appBar: AppBar(title: const Text('Enviar Ubicación')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _urlController,
+              decoration: const InputDecoration(
+                labelText: 'URL del servidor',
+                border: OutlineInputBorder(),
+              ),
             ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _enviarUbicacion,
+              icon: const Icon(Icons.send),
+              label: const Text('Enviar Ubicación'),
+            ),
+            const SizedBox(height: 20),
+            Text(_estado),
+          ],
+        ),
+      ),
     );
   }
 }

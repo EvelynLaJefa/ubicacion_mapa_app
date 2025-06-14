@@ -1,4 +1,4 @@
-package com.example.ubicacion_mapa
+package com.example.ubicacion_manual
 
 import io.flutter.embedding.android.FlutterActivity
 
